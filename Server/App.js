@@ -5,6 +5,7 @@ const cors = require("cors");
 const LineRoutes = require("./Routes/LineRoutes");
 const DelayRoutes = require("./Routes/DelayRoutes");
 const UserRoutes = require("./Routes/UserRoutes");
+const {PORT}  = require('./config/config')
 
 // import postRoutes from './routes/posts.js';
 
@@ -19,7 +20,7 @@ app.use("/api/v1", LineRoutes);
 app.use("/api/v1", UserRoutes);
 
 const CONNECTION_URL =
-  "mongodb+srv://ShayanAbbasi:honda125@nodeexpressproject.srwio3l.mongodb.net/RailwayMaster?retryWrites=true&w=majority";
+  "mongodb+srv://train:niart@cluster0.37mrh84.mongodb.net/trainplotter?retryWrites=true&w=majority";
 const PORT = process.env.PORT || 5000;
 
 mongoose
