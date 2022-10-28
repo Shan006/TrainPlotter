@@ -1,7 +1,7 @@
 const Users = require('../Models/Users')
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken')
-const {SECRET} = require('../config/config')
+const { SECRET } = require('../config/config')
 const passport = require('passport')
 
 const userRegister = async (details, role, res) => {
@@ -22,30 +22,30 @@ const userRegister = async (details, role, res) => {
         }) : null
 
         const hashedPassword = await bcrypt.hash(details.password, 12)
-        console.log("Hashed Password: ",hashedPassword)
+        console.log("Hashed Password: ", hashedPassword)
 
         const newUser = new Users({
             ...details,
             password: hashedPassword,
-            role : role
+            role: role
         })
-        const savedUser  = await newUser.save();
-        console.log("SAVED USER",savedUser)
+        const savedUser = await newUser.save();
+        console.log("SAVED USER", savedUser)
 
-        if(savedUser){
+        if (savedUser) {
 
-                return res.status(200).json(
+            return res.status(200).json(
                 {
                     message: "User creation Success!! 🎉",
-                    success : true
+                    success: true
                 })
-            
+
         }
 
     } catch (err) {
         return res.status(500).json({
-            message : `Unable to create an account.`,
-            success : false
+            message: `Unable to create an account.`,
+            success: false
 
         })
 
@@ -145,7 +145,7 @@ const checkRole = roles => (req, res, next) => {
 module.exports = {
     userRegister,
     userLogin,
-    userAuth, 
+    userAuth,
     checkRole
 
 }
