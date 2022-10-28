@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../Controllers/UserController");
-const { authPage } = require("../Middlewares/Auth");
 
-router.post("/createUser", controller.CreateUser);
-router.post("/AssignRole/:id", authPage(["Admin"]), controller.AssignRoles);
+router.post('/register/superadmin', controller.RegisterSuperAdmin)
+
+router.post('/register/operator', controller.RegisterOperator)
+
+router.post('/login/superadmin', controller.LoginSuperAdmin)
 
 module.exports = router;

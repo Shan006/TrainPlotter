@@ -1,41 +1,17 @@
-const User = require("../Models/Users");
+const {
+  userRegister,
+  userLogin,
+} = require('../utils/Authentication')
 
-exports.CreateUser = async (req, res, next) => {
-  try {
-    const { name, phone, role } = req.body;
 
-    const user = await User.create({
-      name,
-      phone,
-      role,
-    });
-    res.status(201).json({
-      success: true,
-      user,
-    });
-  } catch (error) {
-    res.json({
-      error: error,
-    });
-  }
-};
+exports.RegisterSuperAdmin = async ( req, res ) =>{
+  await userRegister(req.body, "Super Admin" ,res)
+}
 
-exports.AssignRoles = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { role } = req.body;
+exports.RegisterOperator = async ( req, res ) =>{
+  await userRegister(req.body, "Operator" ,res)
+}
 
-    const user = await User.findByIdAndUpdate(id, {
-      role: role,
-    });
-
-    res.status(201).json({
-      success: true,
-      user,
-    });
-  } catch (error) {
-    res.json({
-      error: error,
-    });
-  }
-};
+exports.LoginSuperAdmin = async ( req, res ) =>{
+  await userLogin(req.body, "Super Admin" ,res)
+}
