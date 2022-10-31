@@ -5,8 +5,8 @@ const cors = require("cors");
 const LineRoutes = require("./Routes/LineRoutes");
 const DelayRoutes = require("./Routes/DelayRoutes");
 const UserRoutes = require("./Routes/UserRoutes");
-
-// import postRoutes from './routes/posts.js';
+const TrainRoutes = require("./Routes/TrainRoutes");
+const StationRoutes = require("./Routes/StationRoutes");
 
 const app = express();
 
@@ -17,6 +17,8 @@ app.use(cors());
 app.use("/api/v1", DelayRoutes);
 app.use("/api/v1", LineRoutes);
 app.use("/api/v1", UserRoutes);
+app.use("/api/v1", TrainRoutes);
+app.use("/api/v1", StationRoutes);
 
 const CONNECTION_URL =
   "mongodb+srv://ShayanAbbasi:honda125@nodeexpressproject.srwio3l.mongodb.net/RailwayMaster?retryWrites=true&w=majority";
