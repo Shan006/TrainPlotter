@@ -6,10 +6,6 @@ const Station = mongoose.Schema({
     type: String,
     required: true,
   },
-  StationNo: {
-    type: Number,
-    required: true,
-  },
   IdealDelayTime: {
     type: String,
     required: true,
@@ -26,9 +22,25 @@ const Station = mongoose.Schema({
       DepartureTime: {
         type: String,
       },
+      date: {
+        type: String,
+      },
+    },
+  ],
+  StationDistances: [
+    {
+      StationId: {
+        type: "ObjectId",
+        ref: "Stations",
+      },
+      Path: {
+        type: String,
+      },
+      Distance: {
+        type: String,
+      },
     },
   ],
 });
-// if(TrainDepartureTime - TrainArrivalTime = IdealDelayTime)
 
 module.exports = mongoose.model("Stations", Station);

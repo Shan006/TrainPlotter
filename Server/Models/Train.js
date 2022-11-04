@@ -5,6 +5,13 @@ const Train = mongoose.Schema({
     type: String,
     required: true,
   },
+  AvgSpeed: {
+    type: String,
+  },
+  date: {
+    type: Date,
+    // default: Date.now(),
+  },
   Route: {
     startStation: String,
     endStation: String,

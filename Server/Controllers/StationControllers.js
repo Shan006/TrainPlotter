@@ -3,12 +3,11 @@ const Trains = require("../Models/Train");
 
 exports.AddStation = async (req, res, next) => {
   try {
-    const { StationName, StationNo, IdealDelayTime } = req.body;
+    const { StationName, IdealDelayTime } = req.body;
 
     const station = await Stations.create({
       StationName: StationName,
       IdealDelayTime: IdealDelayTime,
-      StationNo: StationNo,
     });
     res.status(201).json({
       success: true,
@@ -16,8 +15,9 @@ exports.AddStation = async (req, res, next) => {
     });
   } catch (error) {
     res.json({
-      error: error,
+      error: error.stack,
     });
+    console.log(error.stack);
   }
 };
 
@@ -37,9 +37,16 @@ exports.getAllStations = async (req, res, next) => {
 
 exports.TrainReachSpecificStation = async (req, res, next) => {
   try {
-    let prevStationNo;
-    let departure;
-    // Nechay wali logic ki base yh hy kay train jis jis station sy ho kar ai hy uska data mil jay ga yh ham use karain gay previous Station determine karny kay liay.
+    let getDistanceBwStations;
+    let TrainPrevStationDepartureTime;
+    let usedPath;
+    let AT;
+    let DT;
+    let Udate = new Date();
+
+    const CurStation = await Stations.findById(req.params.id);
+    const ReachedTrain = await Trains.findById(req.body.TrainId);
+
     const CheckPrevStation = await Stations.find({
       Train: {
         $elemMatch: { TrainId: req.body.TrainId },
@@ -48,24 +55,48 @@ exports.TrainReachSpecificStation = async (req, res, next) => {
 
     console.log(CheckPrevStation);
 
-    // Nechay loop kay through ham last possible station determine karain gy kay jo hmain uper wali query sy data aya hy us main sy last wala station konsa hy
+    // Loop to get Latest Previous Station of Train
 
     for (let i = 0; i < CheckPrevStation.length; i++) {
       for (let j = 0; j < CheckPrevStation[i].Train.length; j++) {
         if (
           CheckPrevStation[i].Train[j].TrainId.toString() === req.body.TrainId
         ) {
-          prevStationNo = CheckPrevStation[i].StationNo;
-          departure = CheckPrevStation[i].Train[j].DepartureTime;
+          usedPath = `From ${CheckPrevStation[i].StationName} to ${CurStation.StationName}`;
+          getDistanceBwStations = await Stations.find({
+            StationDistances: {
+              $elemMatch: {
+                Path: `From ${CheckPrevStation[i].StationName} to ${CurStation.StationName}`,
+              },
+            },
+          });
+          TrainPrevStationDepartureTime =
+            CheckPrevStation[i].Train[j].DepartureTime;
         }
       }
     }
-    console.log(prevStationNo);
-    console.log(departure);
 
-    const CurStation = await Stations.findById(req.params.id);
+    console.log(getDistanceBwStations);
 
-    const ReachedTrain = await Trains.findById(req.body.TrainId);
+    const UpdatedStation = await Stations.findById(req.params.id);
+
+    // Function To Push Arrival and Departure Time According to Condition:
+
+    const PushInTrainrArray = async (At, Dt) => {
+      const Update = await UpdatedStation.updateOne({
+        $push: {
+          Train: {
+            TrainId: req.body.TrainId,
+            ArrivalTime: At,
+            DepartureTime: Dt,
+            date: Udate,
+          },
+        },
+        new: true,
+      });
+    };
+
+    // If There is no Prev Station of Train, means that train is starting its journey from this very station.
 
     if (CheckPrevStation.length === 0) {
       if (ReachedTrain.Route.startStation !== CurStation.StationName) {
@@ -73,65 +104,161 @@ exports.TrainReachSpecificStation = async (req, res, next) => {
           errMessage: `This is'nt Start Station Of ${ReachedTrain._id} This Train`,
         });
       }
-      const UpdatedStation = await Stations.findOneAndUpdate(
-        { _id: req.params.id },
-        {
-          $push: {
-            Train: {
-              TrainId: req.body.TrainId,
-              ArrivalTime: null,
-              DepartureTime: ReachedTrain.Time.startTime,
-            },
-          },
-        },
-        { new: true }
-      );
+
+      const Updated = PushInTrainrArray(null, ReachedTrain.Time.startTime);
+
       return res.status(201).json({
         success: true,
-        UpdatedStation,
+        Updated,
       });
     }
 
-    const curStationNo = CurStation.StationNo;
+    // Function To get Arrival And Departure Time Of Train.
 
-    const AT = parseInt(departure) + (curStationNo - prevStationNo);
-    const DT = AT + parseInt(CurStation.IdealDelayTime);
-    if (CurStation.StationName === ReachedTrain.Route.endStation) {
-      const UpdatedStation = await Stations.findOneAndUpdate(
-        { _id: req.params.id },
-        {
-          $push: {
-            Train: {
-              TrainId: req.body.TrainId,
-              ArrivalTime: AT,
-              DepartureTime: null,
-            },
-          },
-        },
-        { new: true }
-      );
-      return res.status(201).json({
-        success: true,
-        UpdatedStation,
-      });
+    const CalculateATAndBT = (hours, mins) => {
+      let updatedAT;
+      let updatedDT;
+      let ATHours;
+      let ATMinutes;
+      let DTHours;
+      let DTMins;
+      const Departure = TrainPrevStationDepartureTime.split(" "); //prev Departure like
+      // 0) 03:30 1) AM
+      const Dptime = Departure[0]; // 03:30
+      // Departure[1] // AM
+
+      const DTSplit = Dptime.split(":");
+      // 0) 03 1) 30
+      ATHours = parseInt(hours) + parseInt(DTSplit[0]);
+      ATMinutes = parseInt(mins) + parseInt(DTSplit[1]);
+
+      if (ATHours === 12) {
+        ATHours = 1;
+        Departure[1] === "AM" ? "PM" : "AM";
+        if (Departure[1] === "AM") {
+          const d = new Date();
+          Udate = d.setDate(Udate + 1);
+        }
+      }
+
+      if (ATMinutes >= 60) {
+        ATHours++;
+        ATMinutes -= 60;
+      }
+
+      if (ATMinutes < 10) {
+        updatedAT =
+          ATHours.toString() +
+          ":" +
+          "0" +
+          ATMinutes.toString() +
+          " " +
+          Departure[1];
+      } else {
+        updatedAT =
+          ATHours.toString() + ":" + ATMinutes.toString() + " " + Departure[1];
+      }
+      const IdealDelay = CurStation.IdealDelayTime.split(":");
+
+      DTHours = parseInt(ATHours) + parseInt(IdealDelay[0]);
+      DTMins = parseInt(ATMinutes) + parseInt(IdealDelay[1]);
+
+      if (DTHours === 12) {
+        DTHours = 1;
+        Departure[1] === "AM" ? "PM" : "AM";
+        if (Departure[1] === "AM") {
+          const d = new Date();
+          Udate = d.setDate(Udate + 1);
+        }
+      }
+
+      if (DTMins >= 60) {
+        DTHours++;
+        DTMins -= 60;
+      }
+
+      updatedDT =
+        DTHours.toString() + ":" + DTMins.toString() + " " + Departure[1];
+
+      return updatedAT + "*" + updatedDT;
+    };
+
+    // Calculating the Arrival And Departure Time of train According to conditions
+
+    let DistanceForFormula;
+
+    for (let i = 0; i < getDistanceBwStations[0].StationDistances.length; i++) {
+      if (getDistanceBwStations[0].StationDistances[i].Path === usedPath) {
+        DistanceForFormula =
+          getDistanceBwStations[0].StationDistances[i].Distance;
+      }
+    }
+
+    let temp = parseInt(DistanceForFormula) / parseInt(ReachedTrain.AvgSpeed);
+    temp = temp.toFixed(2);
+
+    console.log(DistanceForFormula);
+    console.log(ReachedTrain.AvgSpeed);
+    if (parseInt(DistanceForFormula) < parseInt(ReachedTrain.AvgSpeed)) {
+      temp *= 60;
+      console.log(temp);
+
+      // TempAt = "00" + ":" + temp.toString();
+      let ATandDT = CalculateATAndBT("00", temp.toString());
+      const Separate = ATandDT.split("*");
+      console.log(ATandDT);
+      AT = Separate[0];
+      DT = Separate[1];
+      console.log(AT);
+      console.log(DT);
+    } else if (
+      parseInt(getDistanceBwStations.Distance) /
+        parseInt(ReachedTrain.AvgSpeed) !==
+      0
+    ) {
+      const arr = temp.toString().split(".");
+      const hours = arr[0];
+
+      temp *= 60;
+      temp = parseInt(temp);
+      // Math.round(temp);
+      const mins = temp - 60;
+
+      // TempAt = hours + ":" + mins.toString();
+      const ATANDBT = CalculateATAndBT(hours, mins.toString());
+      const Separate = ATANDBT.split("*");
+      AT = Separate[0];
+      DT = Separate[1];
+      console.log(AT);
+      console.log(DT);
     } else {
-      const UpdatedStation = await Stations.findOneAndUpdate(
-        { _id: req.params.id },
-        {
-          $push: {
-            Train: {
-              TrainId: req.body.TrainId,
-              ArrivalTime: AT.toString(),
-              DepartureTime: DT.toString(),
-            },
-          },
-        },
-        { new: true }
-      );
+      // TempAt = "0" + temp + ":" + "00";
+      const ATANDBT = CalculateATAndBT(temp.toString(), "00");
+      const Separate = ATANDBT.split("*");
+      AT = Separate[0];
+      DT = Separate[1];
+      console.log(AT);
+      console.log(DT);
+    }
+
+    // If This is the last Station of Train, means that train is suppossed to stop at this station.
+
+    if (CurStation.StationName === ReachedTrain.Route.endStation) {
+      const Updated = PushInTrainrArray(AT, null);
 
       return res.status(201).json({
         success: true,
-        UpdatedStation,
+        Updated,
+      });
+    }
+
+    // It is neither Start Station of Train Nor Last Station of Train, means any station in mid of the trains route.
+    else {
+      const Updated = PushInTrainrArray(AT, DT);
+
+      return res.status(201).json({
+        success: true,
+        Updated,
       });
     }
   } catch (error) {
@@ -161,37 +288,37 @@ exports.RemoveTrainIdFromASpecificStation = async (req, res, next) => {
   }
 };
 
-exports.CheckTrainDelayOnASpecificStation = async (req, res, next) => {
+exports.AddDistances = async (req, res, next) => {
   try {
-    const { TrainName, StationName, PreviousStation } = req.body;
+    const curStation = await Stations.findById(req.params.id);
 
-    const curStation = await Stations.findOne({ StationName });
-    const prevStation = await Stations.findOne({ PreviousStation });
+    const FromWhereDistanceIsRequired = await Stations.findById(
+      req.body.StationId
+    );
 
-    const Train = await Trains.findOne({ TrainName });
+    const UpdatedStation = await Stations.findOneAndUpdate(
+      { _id: req.params.id },
+      {
+        $push: {
+          StationDistances: {
+            StationId: req.body.StationId,
+            Path: `From ${curStation.StationName} to ${FromWhereDistanceIsRequired.StationName}`,
+            Distance: req.body.Distance,
+          },
+        },
+      },
+      { new: true }
+    );
 
-    // curStation.IdealComingTime = curStation.StationNo - prevStation.StationNo;
-
-    Train.Time.ArrivalTimeAtAStation =
-      curStation.StationNo - prevStation.StationNo;
-    Train.Time.DepartureTimeFromAStation =
-      Train.Time.ArrivalTimeAtAStation + curStation.IdealDelayTime;
-  } catch (error) {}
+    res.status(201).json({
+      success: true,
+      UpdatedStation,
+    });
+  } catch (error) {
+    res.json({
+      message: error.stack,
+    });
+  }
 };
 
-// Train delay:
-
-//train ka startTime or Route ka idealTime chahiay hoga or Station par jo arrivalTime hoga wo bhi chahiay hoga.
-// ham nay train waly Schema main aik Delay bhi lia hy jis ko ham Update karain gay agr hamari req fullfil na hui matlab agr delay lagta hua tou ham us par delay lagain gay
-
-// ham har statiin kay liay aik value set karain gay jis kay according ham idealTime(from one to other station) check krain gay
-
-// jis station sy wo a rha hy uski id hmain mil gai tou ham check krain gay aik us ka departure time or jis station par pohnchi hy uska arrival time ideal time jo us station ka hy uskay equal ni aya tou matlab delay hy.
-
-// 1) Kisi bhi Station par
-// Requirements:
-// CurrentStation , Station par us train ka arrivalTime , Station par us train ka departureTime , station par ideal delay time
-
-// 2) Aik Station sy Dosray Station kay beech main
-// Requirements:
-// TrainId , TrainCurrentStation , StationIdealDelay (jo kay ham currentstation sy hi get kr skty hain) , TrainPreviousStation , idealTime (station to station) (jis sy ai hy or jahan par ai hy unkay no's sy ), DepartureTime (jahan sy ai hy uska) , ArrivalTime (jahan par ai hy)
+// req.params.id main ham current station ki id dain gay or req.body.StationId main ham jis stations sy Distance lay rhay hain uski id dain gay
