@@ -15,3 +15,4 @@ exports.RegisterOperator = async ( req, res ) =>{
 exports.LoginSuperAdmin = async ( req, res ) =>{
   await userLogin(req.body, "Super Admin" ,res)
 }
+
