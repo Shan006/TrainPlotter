@@ -183,8 +183,6 @@ exports.TrainReachSpecificStation = async (req, res, next) => {
       return updatedAT + "*" + updatedDT;
     };
 
-    // Calculating the Arrival And Departure Time of train According to conditions
-
     let DistanceForFormula;
 
     for (let i = 0; i < getDistanceBwStations[0].StationDistances.length; i++) {
@@ -219,13 +217,18 @@ exports.TrainReachSpecificStation = async (req, res, next) => {
       const arr = temp.toString().split(".");
       const hours = arr[0];
 
-      temp *= 60;
-      temp = parseInt(temp);
-      // Math.round(temp);
-      const mins = temp - 60;
+      console.log(arr[1]);
+
+      temp = parseFloat("." + arr[1]) * 60;
+      console.log(temp);
+      console.log(parseInt(temp));
+
+      if (temp < 0) {
+        temp = -temp;
+      }
 
       // TempAt = hours + ":" + mins.toString();
-      const ATANDBT = CalculateATAndBT(hours, mins.toString());
+      const ATANDBT = CalculateATAndBT(hours, temp.toString());
       const Separate = ATANDBT.split("*");
       AT = Separate[0];
       DT = Separate[1];
